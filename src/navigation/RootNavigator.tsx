@@ -1,22 +1,24 @@
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { HomeScreen } from '@/features/pallets/screens/HomeScreen';
-import { DetailsScreen } from '@/features/pallets/screens/DetailsScreen';
-
-export type RootStackParamList = {
-  Home: undefined;
-  Details: undefined;
-};
-
-const Stack = createNativeStackNavigator<RootStackParamList>();
+import { useEffect } from 'react';
+import { useAuthStore } from '@/features/auth/store/useAuthStore';
+import { LoginScreen } from '@/features/auth/screens/LoginScreen';
+import { LockScreen } from '@/features/auth/screens/LockScreen';
+import { PalletsNavigator } from './PalletsNavigator';
 
 export function RootNavigator() {
+  const status = useAuthStore((s) => s.status);
+  const bootstrap = useAuthStore((s) => s.bootstrap);
+
+  useEffect(() => {
+    bootstrap();
+  }, [bootstrap]);
+
   return (
     <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Details" component={DetailsScreen} />
-      </Stack.Navigator>
+      {status === 'unauthenticated' && <LoginScreen />}
+      {status === 'locked' && <LockScreen />}
+      {status === 'authenticated' && <PalletsNavigator />}
+      {/* status === 'loading': no renderiza nada, podría ir un splash */}
     </NavigationContainer>
   );
 }

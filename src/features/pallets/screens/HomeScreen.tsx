@@ -1,8 +1,8 @@
 import { View, Text, Pressable } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/navigation/RootNavigator';
+import type { PalletsStackParamList } from '@/navigation/PalletsNavigator';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type Props = NativeStackScreenProps<PalletsStackParamList, 'Home'>;
 
 export function HomeScreen({ navigation }: Props) {
   return (

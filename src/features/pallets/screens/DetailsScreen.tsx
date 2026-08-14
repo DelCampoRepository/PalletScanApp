@@ -1,8 +1,8 @@
 import { View, Text } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/navigation/RootNavigator';
+import type { PalletsStackParamList } from '@/navigation/PalletsNavigator';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Details'>;
+type Props = NativeStackScreenProps<PalletsStackParamList, 'Details'>;
 
 export function DetailsScreen(_props: Props) {
   return (
