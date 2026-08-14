@@ -1,0 +1,19 @@
+import { View, Text, Pressable } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '@/navigation/RootNavigator';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+export function HomeScreen({ navigation }: Props) {
+  return (
+    <View className="flex-1 items-center justify-center bg-white">
+      <Text className="text-xl font-bold mb-4">Pantalla Home</Text>
+      <Pressable
+        className="bg-blue-500 px-4 py-2 rounded"
+        onPress={() => navigation.navigate('Details')}
+      >
+        <Text className="text-white font-semibold">Ir a Detalles</Text>
+      </Pressable>
+    </View>
+  );
+}
