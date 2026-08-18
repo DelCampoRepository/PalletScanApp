@@ -14,6 +14,12 @@ export function HomeScreen({ navigation }: Props) {
       >
         <Text className="text-white font-semibold">Ir a Detalles</Text>
       </Pressable>
+      <Pressable
+  className="bg-purple-600 px-4 py-2 rounded mt-4"
+  onPress={() => navigation.navigate('SetPattern')}
+>
+  <Text className="text-white font-semibold">Configurar patrón</Text>
+</Pressable>
     </View>
   );
 }

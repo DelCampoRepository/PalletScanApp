@@ -1,23 +1,32 @@
 import { create } from 'zustand';
 import { StoredSession, AuthStatus } from '../domain/types';
+import * as Keychain from 'react-native-keychain';
 
-// ⚠️ SIMULADO por ahora: en vez de guardar/leer de react-native-keychain,
-// usamos esta variable en memoria. Cuando instalemos keychain, solo se
-// reemplazan las 3 funciones de abajo (readStoredSession, saveSession,
-// clearSession) — el resto del store no cambia.
-let fakeStorage: StoredSession | null = null;
+// Nombre único para agrupar este dato dentro del Keystore/Keychain del
+// sistema — así no choca si más adelante guardamos otras credenciales.
+const SERVICE = 'pallet-scan-session';
 
 async function readStoredSession(): Promise<StoredSession | null> {
-  return fakeStorage;
+  const credentials = await Keychain.getGenericPassword({ service: SERVICE });
+  if (!credentials) return null;
+  try {
+    return JSON.parse(credentials.password) as StoredSession;
+  } catch {
+    return null;
+  }
 }
 
 async function saveSession(session: StoredSession): Promise<void> {
-  fakeStorage = session;
+  // Keychain solo guarda strings, por eso serializamos el objeto completo
+  await Keychain.setGenericPassword('session', JSON.stringify(session), {
+    service: SERVICE,
+  });
 }
 
 async function clearSession(): Promise<void> {
-  fakeStorage = null;
+  await Keychain.resetGenericPassword({ service: SERVICE });
 }
+
 
 interface AuthState {
   status: AuthStatus;
