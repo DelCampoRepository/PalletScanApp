@@ -1,10 +1,15 @@
 import { create } from 'zustand';
-import { StoredSession, AuthStatus } from '../domain/types';
+import { StoredSession, AuthStatus, AuthUser, UserRole } from '../domain/types';
 import * as Keychain from 'react-native-keychain';
 
-// Nombre único para agrupar este dato dentro del Keystore/Keychain del
-// sistema — así no choca si más adelante guardamos otras credenciales.
 const SERVICE = 'pallet-scan-session';
+
+// Usuarios de prueba. Cuando conectemos la API real, esto se reemplaza
+// por la llamada al backend — el resto del store no cambia.
+const MOCK_USERS: Array<{ username: string; password: string; roles: UserRole[] }> = [
+  { username: 'embarque1', password: '1234', roles: ['embarque'] },
+  { username: 'validacion1', password: '1234', roles: ['validacion'] },
+];
 
 async function readStoredSession(): Promise<StoredSession | null> {
   const credentials = await Keychain.getGenericPassword({ service: SERVICE });
@@ -17,7 +22,6 @@ async function readStoredSession(): Promise<StoredSession | null> {
 }
 
 async function saveSession(session: StoredSession): Promise<void> {
-  // Keychain solo guarda strings, por eso serializamos el objeto completo
   await Keychain.setGenericPassword('session', JSON.stringify(session), {
     service: SERVICE,
   });
@@ -27,17 +31,17 @@ async function clearSession(): Promise<void> {
   await Keychain.resetGenericPassword({ service: SERVICE });
 }
 
-
 interface AuthState {
   status: AuthStatus;
+  user: AuthUser | null;
   error: string | null;
 
   bootstrap: () => Promise<void>;
   loginWithPassword: (username: string, password: string) => Promise<void>;
-  unlock: () => void; // se llama cuando huella/patrón confirma correctamente
+  unlock: () => void;
   logout: () => Promise<void>;
+  hasRole: (role: UserRole) => boolean;
 
-  // Solo para pruebas mientras no hay keychain real:
   __debugForceExpire: () => Promise<void>;
 }
 
@@ -47,45 +51,54 @@ function delay(ms: number): Promise<void> {
   });
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>()((set, get) => ({
   status: 'loading',
+  user: null,
   error: null,
 
   bootstrap: async () => {
     const session = await readStoredSession();
     if (!session || session.expiresAt < Date.now()) {
       await clearSession();
-      set({ status: 'unauthenticated' });
+      set({ status: 'unauthenticated', user: null });
       return;
     }
-    // Hay token válido: pedimos huella/patrón antes de dejar pasar
-    set({ status: 'locked' });
+    set({ status: 'locked', user: session.user });
   },
 
   loginWithPassword: async (username, password) => {
     set({ error: null });
     await delay(400);
-    // Mock: cualquier usuario/contraseña no vacíos "funciona" por ahora
-    if (!username || !password) {
+
+    const found = MOCK_USERS.find((u) => u.username === username && u.password === password);
+    if (!found) {
       set({ error: 'Usuario o contraseña incorrectos' });
       return;
     }
+
+    const user: AuthUser = { username: found.username, roles: found.roles };
     await saveSession({
       token: `mock-token-${username}`,
-      expiresAt: Date.now() + 1000 * 60 * 60 * 8, // 8 horas
+      expiresAt: Date.now() + 1000 * 60 * 60 * 8,
+      user,
     });
-    set({ status: 'authenticated' });
+    set({ status: 'authenticated', user });
   },
 
   unlock: () => set({ status: 'authenticated' }),
 
   logout: async () => {
     await clearSession();
-    set({ status: 'unauthenticated' });
+    set({ status: 'unauthenticated', user: null });
+  },
+
+  hasRole: (role) => {
+    const { user } = get();
+    return !!user?.roles.includes(role);
   },
 
   __debugForceExpire: async () => {
     await clearSession();
-    set({ status: 'unauthenticated' });
+    set({ status: 'unauthenticated', user: null });
   },
 }));
