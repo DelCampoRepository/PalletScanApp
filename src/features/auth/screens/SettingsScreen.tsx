@@ -1,6 +1,10 @@
 import { useCallback, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import IconFingerprint from '@tabler/icons-react-native/IconFingerprint';
+import IconGridDots from '@tabler/icons-react-native/IconGridDots';
+import IconCheck from '@tabler/icons-react-native/IconCheck';
+import IconShieldLock from '@tabler/icons-react-native/IconShieldLock';
 import { isSensorAvailable } from '@sbaiahmed1/react-native-biometrics';
 import { hasPatternConfigured } from '@/features/auth/services/patternService';
 import {
@@ -20,8 +24,6 @@ export function SettingsScreen({ navigation }: any) {
     getPreferredMethod().then(setPreferredMethodState);
   }, []);
 
-  // Se recarga cada vez que esta pantalla vuelve a tener foco (por ejemplo,
-  // al regresar de configurar el patrón) — no solo la primera vez.
   useFocusEffect(
     useCallback(() => {
       loadState();
@@ -34,47 +36,96 @@ export function SettingsScreen({ navigation }: any) {
   }
 
   return (
-    <View className="flex-1 bg-white px-6 pt-6 gap-8">
-      <View className="gap-2">
-        <Text className="text-lg font-bold">Método preferido</Text>
-        <Text className="text-gray-500 text-sm mb-2">
-          Se usa primero al reabrir la app. El otro método sigue disponible como respaldo.
+    <View className="flex-1 bg-paper">
+      <View className="bg-ink px-5 py-4">
+        <Text className="text-steel text-[11px] tracking-widest uppercase font-mono">
+          Cuenta
         </Text>
-
-        <Pressable
-          disabled={!biometryAvailable}
-          onPress={() => choosePreferred('fingerprint')}
-          className={`border rounded-lg p-3 flex-row justify-between items-center ${
-            biometryAvailable ? 'border-gray-300' : 'border-gray-200 opacity-40'
-          }`}
-        >
-          <Text>Huella{!biometryAvailable ? ' (no disponible)' : ''}</Text>
-          {preferredMethod === 'fingerprint' && <Text className="text-blue-600 font-bold">✓</Text>}
-        </Pressable>
-
-        <Pressable
-          disabled={!patternConfigured}
-          onPress={() => choosePreferred('pattern')}
-          className={`border rounded-lg p-3 flex-row justify-between items-center ${
-            patternConfigured ? 'border-gray-300' : 'border-gray-200 opacity-40'
-          }`}
-        >
-          <Text>Patrón{!patternConfigured ? ' (sin configurar)' : ''}</Text>
-          {preferredMethod === 'pattern' && <Text className="text-blue-600 font-bold">✓</Text>}
-        </Pressable>
+        <Text className="text-paper text-lg font-medium mt-1">Ajustes</Text>
       </View>
 
-      <View className="gap-2">
-        <Text className="text-lg font-bold">Patrón de desbloqueo</Text>
-        <Pressable
-          className="bg-gray-700 rounded-lg p-3"
-          onPress={() => navigation.navigate('SetPattern')}
-        >
-          <Text className="text-white text-center font-semibold">
-            {patternConfigured ? 'Cambiar patrón' : 'Configurar patrón'}
+      <View className="px-6 pt-6 gap-8">
+        <View className="gap-2">
+          <Text className="text-steel text-[11px] tracking-wide uppercase mb-1">
+            Método preferido
           </Text>
-        </Pressable>
+          <Text className="text-steel text-sm mb-2">
+            Se usa primero al reabrir la app. El otro método sigue disponible como respaldo.
+          </Text>
+
+          <MethodRow
+            icon={IconFingerprint}
+            label="Huella"
+            available={biometryAvailable}
+            unavailableHint="no disponible"
+            selected={preferredMethod === 'fingerprint'}
+            onPress={() => choosePreferred('fingerprint')}
+          />
+
+          <MethodRow
+            icon={IconGridDots}
+            label="Patrón"
+            available={patternConfigured}
+            unavailableHint="sin configurar"
+            selected={preferredMethod === 'pattern'}
+            onPress={() => choosePreferred('pattern')}
+          />
+        </View>
+
+        <View className="gap-2">
+          <Text className="text-steel text-[11px] tracking-wide uppercase mb-1">
+            Patrón de desbloqueo
+          </Text>
+          <Pressable
+            className="flex-row items-center justify-center gap-2 bg-steel rounded p-3"
+            onPress={() => navigation.navigate('SetPattern')}
+          >
+            <IconShieldLock size={16} color="#F3F1E7" />
+            <Text className="text-paper text-center font-medium">
+              {patternConfigured ? 'Cambiar patrón' : 'Configurar patrón'}
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </View>
+  );
+}
+
+function MethodRow({
+  icon: Icon,
+  label,
+  available,
+  unavailableHint,
+  selected,
+  onPress,
+}: {
+  icon: React.ComponentType<{ size?: number; color?: string }>;
+  label: string;
+  available: boolean;
+  unavailableHint: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      disabled={!available}
+      onPress={onPress}
+      className={
+        selected
+          ? 'bg-ink rounded p-3 flex-row items-center justify-between'
+          : available
+            ? 'bg-white border border-line rounded p-3 flex-row items-center justify-between'
+            : 'border border-dashed border-line rounded p-3 flex-row items-center justify-between opacity-50'
+      }
+    >
+      <View className="flex-row items-center gap-2">
+        <Icon size={16} color={selected ? '#C7D93E' : '#6E7C74'} />
+        <Text className={selected ? 'text-paper' : 'text-ink'}>
+          {label}
+          {!available ? ` (${unavailableHint})` : ''}
+        </Text>
+      </View>
+      {selected && <IconCheck size={16} color="#C7D93E" />}
+    </Pressable>
   );
 }

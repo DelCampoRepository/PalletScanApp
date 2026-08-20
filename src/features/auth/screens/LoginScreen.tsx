@@ -1,40 +1,70 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
+import IconUser from '@tabler/icons-react-native/IconUser';
+import IconLock from '@tabler/icons-react-native/IconLock';
 import { useAuthStore } from '@/features/auth/store/useAuthStore';
 
 export function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const loginWithPassword = useAuthStore((s) => s.loginWithPassword);
   const error = useAuthStore((s) => s.error);
 
+  async function handleSubmit() {
+    setSubmitting(true);
+    await loginWithPassword(username, password);
+    setSubmitting(false);
+  }
+
   return (
-    <View className="flex-1 justify-center px-6 bg-white gap-3">
-      <Text className="text-2xl font-bold text-center mb-6">Relación de pallets</Text>
+    <View className="flex-1 bg-paper">
+      <View className="bg-ink px-6 pt-16 pb-10">
+        <Text className="text-steel text-[11px] tracking-widest uppercase font-mono">
+          Sistema de embarques
+        </Text>
+        <Text className="text-paper text-2xl font-medium mt-1">Iniciar sesión</Text>
+      </View>
 
-      <TextInput
-        className="border border-gray-300 rounded-lg p-3"
-        placeholder="Usuario"
-        autoCapitalize="none"
-        value={username}
-        onChangeText={setUsername}
-      />
-      <TextInput
-        className="border border-gray-300 rounded-lg p-3"
-        placeholder="Contraseña"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+      <View className="px-6 pt-8">
+        <View className="flex-row items-center gap-1.5 mb-1.5">
+          <IconUser size={14} color="#6E7C74" />
+          <Text className="text-steel text-[11px] tracking-wide uppercase">Usuario</Text>
+        </View>
+        <TextInput
+          className="bg-white border border-line rounded p-3 font-mono text-ink mb-4"
+          autoCapitalize="none"
+          value={username}
+          onChangeText={setUsername}
+        />
 
-      {error ? <Text className="text-red-600 text-center">{error}</Text> : null}
+        <View className="flex-row items-center gap-1.5 mb-1.5">
+          <IconLock size={14} color="#6E7C74" />
+          <Text className="text-steel text-[11px] tracking-wide uppercase">Contraseña</Text>
+        </View>
+        <TextInput
+          className="bg-white border border-line rounded p-3 font-mono text-ink mb-2"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-      <Pressable
-        className="bg-blue-600 rounded-lg p-3 mt-2"
-        onPress={() => loginWithPassword(username, password)}
-      >
-        <Text className="text-white text-center font-semibold">Ingresar</Text>
-      </Pressable>
+        {error ? <Text className="text-rust text-center mb-2">{error}</Text> : null}
+
+        <Pressable
+          className="bg-pulp rounded p-3.5 mt-3"
+          disabled={submitting}
+          onPress={handleSubmit}
+        >
+          <Text className="text-ink text-center font-medium">
+            {submitting ? 'Ingresando...' : 'Ingresar'}
+          </Text>
+        </Pressable>
+
+        <Text className="text-steel text-xs text-center mt-6">
+          Prueba: embarque1 / 1234 · validacion1 / 1234
+        </Text>
+      </View>
     </View>
   );
 }
