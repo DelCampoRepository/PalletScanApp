@@ -7,6 +7,9 @@ import IconCheck from '@tabler/icons-react-native/IconCheck';
 import IconShieldLock from '@tabler/icons-react-native/IconShieldLock';
 import { isSensorAvailable } from '@sbaiahmed1/react-native-biometrics';
 import { hasPatternConfigured } from '@/features/auth/services/patternService';
+import IconLogout from '@tabler/icons-react-native/IconLogout';
+import { useAuthStore } from '@/features/auth/store/useAuthStore';
+
 import {
   getPreferredMethod,
   setPreferredMethod,
@@ -14,6 +17,7 @@ import {
 } from '@/features/auth/services/authPreferenceService';
 
 export function SettingsScreen({ navigation }: any) {
+  const logout = useAuthStore((s) => s.logout);
   const [biometryAvailable, setBiometryAvailable] = useState(false);
   const [patternConfigured, setPatternConfigured] = useState(false);
   const [preferredMethod, setPreferredMethodState] = useState<AuthMethod | null>(null);
@@ -87,6 +91,15 @@ export function SettingsScreen({ navigation }: any) {
           </Pressable>
         </View>
       </View>
+      <View className="gap-2">
+  <Pressable
+    className="flex-row items-center justify-center gap-2 border border-rust rounded p-3"
+    onPress={logout}
+  >
+    <IconLogout size={16} color="#C1502E" />
+    <Text className="text-rust text-center font-medium">Cerrar sesión</Text>
+  </Pressable>
+</View>
     </View>
   );
 }
