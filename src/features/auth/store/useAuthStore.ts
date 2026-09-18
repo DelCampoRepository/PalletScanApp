@@ -1,15 +1,18 @@
 import { create } from 'zustand';
-import { StoredSession, AuthStatus, AuthUser, UserRole } from '../domain/types';
 import * as Keychain from 'react-native-keychain';
+import { StoredSession, AuthStatus, AuthUser, UserRole } from '../domain/types';
+import { apiClient, ApiError } from '@/shared/services/apiClient';
 
 const SERVICE = 'pallet-scan-session';
 
-// Usuarios de prueba. Cuando conectemos la API real, esto se reemplaza
-// por la llamada al backend — el resto del store no cambia.
-const MOCK_USERS: Array<{ username: string; password: string; roles: UserRole[] }> = [
-  { username: 'embarque1', password: '1234', roles: ['embarque'] },
-  { username: 'validacion1', password: '1234', roles: ['validacion'] },
-];
+interface LoginApiResponse {
+  token: string;
+  expiresAt: string | null;
+  username: string;
+  roles: string[];
+  locationCode: string;
+  locationName: string;
+}
 
 async function readStoredSession(): Promise<StoredSession | null> {
   const credentials = await Keychain.getGenericPassword({ service: SERVICE });
@@ -22,9 +25,7 @@ async function readStoredSession(): Promise<StoredSession | null> {
 }
 
 async function saveSession(session: StoredSession): Promise<void> {
-  await Keychain.setGenericPassword('session', JSON.stringify(session), {
-    service: SERVICE,
-  });
+  await Keychain.setGenericPassword('session', JSON.stringify(session), { service: SERVICE });
 }
 
 async function clearSession(): Promise<void> {
@@ -37,18 +38,12 @@ interface AuthState {
   error: string | null;
 
   bootstrap: () => Promise<void>;
-  loginWithPassword: (username: string, password: string) => Promise<void>;
+  loginWithPassword: (username: string, password: string, role: UserRole) => Promise<void>;
   unlock: () => void;
   logout: () => Promise<void>;
   hasRole: (role: UserRole) => boolean;
 
   __debugForceExpire: () => Promise<void>;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(), ms);
-  });
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
@@ -58,31 +53,42 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
   bootstrap: async () => {
     const session = await readStoredSession();
-    if (!session || session.expiresAt < Date.now()) {
+    if (!session) {
       await clearSession();
       set({ status: 'unauthenticated', user: null });
       return;
     }
+    // El token no expira (decisión de negocio) — si hay sesión guardada,
+    // siempre pasa a "locked" en vez de revisar una fecha de vencimiento.
     set({ status: 'locked', user: session.user });
   },
 
-  loginWithPassword: async (username, password) => {
+  loginWithPassword: async (username, password, role) => {
     set({ error: null });
-    await delay(400);
+    try {
+      const response = await apiClient.postNoAuth<LoginApiResponse>('/api/auth/login', {
+        username,
+        password,
+        role,
+      });
 
-    const found = MOCK_USERS.find((u) => u.username === username && u.password === password);
-    if (!found) {
-      set({ error: 'Usuario o contraseña incorrectos' });
-      return;
+      const user: AuthUser = {
+        username: response.username,
+        roles: response.roles as UserRole[],
+        locationCode: response.locationCode || undefined,
+        locationName: response.locationName || undefined,
+      };
+
+      await saveSession({
+        token: response.token,
+        expiresAt: response.expiresAt ? new Date(response.expiresAt).getTime() : Number.MAX_SAFE_INTEGER,
+        user,
+      });
+
+      set({ status: 'authenticated', user });
+    } catch (err) {
+      set({ error: (err as ApiError).message ?? 'No se pudo iniciar sesión' });
     }
-
-    const user: AuthUser = { username: found.username, roles: found.roles };
-    await saveSession({
-      token: `mock-token-${username}`,
-      expiresAt: Date.now() + 1000 * 60 * 60 * 8,
-      user,
-    });
-    set({ status: 'authenticated', user });
   },
 
   unlock: () => set({ status: 'authenticated' }),

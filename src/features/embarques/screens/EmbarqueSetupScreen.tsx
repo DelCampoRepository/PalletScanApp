@@ -12,10 +12,11 @@ import { catalogRepository } from '@/shared/services/repositoryFactory';
 import { CatalogItem } from '@/features/embarques/domain/ICatalogRepository';
 import { useCatalogPicker } from '@/features/embarques/hooks/useCatalogPicker';
 import { CatalogPickerModal } from '@/features/embarques/components/CatalogPickerModal';
-
+import { useAuthStore } from '@/features/auth/store/useAuthStore';
 type IconComponent = React.ComponentType<{ size?: number; color?: string }>;
 
 export function EmbarqueSetupScreen({ navigation }: any) {
+  const authUser = useAuthStore((s) => s.user);
   const setupData = useEmbarqueStore((s) => s.setupData);
   const setSetupField = useEmbarqueStore((s) => s.setSetupField);
   const setLocationFromLogin = useEmbarqueStore((s) => s.setLocationFromLogin);
@@ -29,11 +30,11 @@ export function EmbarqueSetupScreen({ navigation }: any) {
   const tractorRef = useRef<TextInput>(null);
   const boxRef = useRef<TextInput>(null);
 
-  useEffect(() => {
-    if (!setupData?.locationCode) {
-      setLocationFromLogin('001', 'CEDIS Culiacán');
-    }
-  }, [setupData?.locationCode, setLocationFromLogin]);
+useEffect(() => {
+  if (!setupData?.locationCode && authUser?.locationCode) {
+    setLocationFromLogin(authUser.locationCode, authUser.locationName ?? '');
+  }
+}, [setupData?.locationCode, authUser, setLocationFromLogin]);
 
   const marketCode = setupData?.marketCode ?? '';
   const marketName = setupData?.marketName ?? '';

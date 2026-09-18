@@ -1,5 +1,5 @@
 import { IPalletRepository } from '../domain/IPalletRepository';
-import { BoxLabel, PalletInfo, VallidateLabelResults } from '../domain/types';
+import { BoxLabel, PalletInfo,ValidateLabelResult } from '../domain/types';
 
 function delay<T>(value: T, ms = 400): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms));
@@ -67,7 +67,7 @@ export class PalletMockRepository implements IPalletRepository {
     return delay(existing);
   }
 
-  async validateLabel(noPallet: string, code: string): Promise<VallidateLabelResults> {
+  async validateLabel(noPallet: string, code: string): Promise<ValidateLabelResult> {
     const info = PALLETS[noPallet];
     if (!info) return delay({ ok: false, reason: 'Pallet no válido' });
 

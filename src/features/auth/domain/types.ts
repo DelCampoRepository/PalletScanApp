@@ -7,6 +7,8 @@ export type UserRole = 'embarque' | 'validacion';
 export interface AuthUser {
   username: string;
   roles: UserRole[];
+  locationCode?: string;
+  locationName?: string;
 }
 
 export interface StoredSession {

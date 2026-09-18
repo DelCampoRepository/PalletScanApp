@@ -16,7 +16,6 @@ export interface BoxLabel {
   alreadyOnPallet?: boolean;
 }
 
-export interface VallidateLabelResults {
-  ok: boolean;
+export interface ValidateLabelResult {  ok: boolean;
   reason?: string;
 }

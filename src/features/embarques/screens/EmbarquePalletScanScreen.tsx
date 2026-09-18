@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, Alert } from 'react-native';
 import IconBarcode from '@tabler/icons-react-native/IconBarcode';
 import IconTruck from '@tabler/icons-react-native/IconTruck';
@@ -35,10 +35,12 @@ function groupPalletsByRow(pallets: EmbarquePalletEntry[]) {
 export function EmbarquePalletScanScreen({ navigation }: any) {
   const setupData = useEmbarqueStore((s) => s.setupData);
   const pallets = useEmbarqueStore((s) => s.pallets);
+  const hasHydrated = useEmbarqueStore((s) => s.hasHydrated);
   const addOrUpdatePallet = useEmbarqueStore((s) => s.addOrUpdatePallet);
   const removePallet = useEmbarqueStore((s) => s.removePallet);
   const findPallet = useEmbarqueStore((s) => s.findPallet);
   const resetAll = useEmbarqueStore((s) => s.resetAll);
+  const clearPallets = useEmbarqueStore((s) => s.clearPallets);
 
   const groupedRows = useMemo(() => groupPalletsByRow(pallets), [pallets]);
 
@@ -49,8 +51,27 @@ export function EmbarquePalletScanScreen({ navigation }: any) {
   const [position, setPosition] = useState<TruckPosition | null>(null);
   const [isExcess, setIsExcess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [recoveryChecked, setRecoveryChecked] = useState(false);
 
   const truckRowRef = useRef<TextInput>(null);
+
+  // Aviso de recuperación: equivalente al "¿Desea recuperarlos?" del
+  // Pallets.txt en Frmc052002MB — si hay pallets guardados de una sesión
+  // anterior, se pregunta antes de continuar en silencio.
+  useEffect(() => {
+    if (!hasHydrated || recoveryChecked) return;
+    setRecoveryChecked(true);
+    if (pallets.length > 0) {
+      Alert.alert(
+        'Pallets respaldados',
+        `Existen ${pallets.length} pallet(s) guardados de una sesión anterior. ¿Desea recuperarlos?`,
+        [
+          { text: 'No, descartar', style: 'destructive', onPress: () => clearPallets() },
+          { text: 'Sí, recuperar', style: 'default' },
+        ],
+      );
+    }
+  }, [hasHydrated, recoveryChecked, pallets.length, clearPallets]);
 
   function clearForm() {
     setPalletInfo(null);
@@ -185,10 +206,7 @@ export function EmbarquePalletScanScreen({ navigation }: any) {
         onPress: async () => {
           const result = await embarquePalletRepository.saveEmbarque(setupData, pallets);
           if (result.ok) {
-            Alert.alert(
-              'Embarque guardado',
-              `Pallets: ${result.totalPallets}\nEmbarque # ${result.embarqueNumber}`,
-            );
+            Alert.alert('Embarque guardado', `Pallets: ${result.totalPallets}\nEmbarque # ${result.embarqueNumber}`);
             resetAll();
             scanner.clear();
             clearForm();
@@ -230,9 +248,7 @@ export function EmbarquePalletScanScreen({ navigation }: any) {
             <Text className="text-steel text-sm">
               {palletInfo.producerName} · {palletInfo.totalBoxes} bultos
             </Text>
-            {palletInfo.isConsolidator && (
-              <Text className="text-rust text-xs mt-1">Pallet consolidador</Text>
-            )}
+            {palletInfo.isConsolidator && <Text className="text-rust text-xs mt-1">Pallet consolidador</Text>}
           </View>
         )}
 
@@ -240,9 +256,7 @@ export function EmbarquePalletScanScreen({ navigation }: any) {
           <View className="mt-4">
             <View className="flex-row items-center gap-1.5 mb-1.5">
               <IconTruck size={14} color="#6E7C74" />
-              <Text className="text-steel text-[11px] tracking-wide uppercase">
-                Hilera del camión
-              </Text>
+              <Text className="text-steel text-[11px] tracking-wide uppercase">Hilera del camión</Text>
             </View>
             <TextInput
               ref={truckRowRef}
@@ -252,18 +266,14 @@ export function EmbarquePalletScanScreen({ navigation }: any) {
               keyboardType="number-pad"
             />
 
-            <Text className="text-steel text-[11px] tracking-wide uppercase mt-4 mb-1.5">
-              Posición
-            </Text>
+            <Text className="text-steel text-[11px] tracking-wide uppercase mt-4 mb-1.5">Posición</Text>
             <View className="flex-row gap-2">
               {POSITION_LABELS.map(({ key, label }) => (
                 <Pressable
                   key={key}
                   onPress={() => setPosition(key)}
                   className={
-                    position === key
-                      ? 'flex-1 bg-pulp rounded p-2.5'
-                      : 'flex-1 border border-steel rounded p-2.5'
+                    position === key ? 'flex-1 bg-pulp rounded p-2.5' : 'flex-1 border border-steel rounded p-2.5'
                   }
                 >
                   <Text
@@ -279,10 +289,7 @@ export function EmbarquePalletScanScreen({ navigation }: any) {
               ))}
             </View>
 
-            <Pressable
-              className="flex-row items-center gap-2 mt-4"
-              onPress={() => setIsExcess((v) => !v)}
-            >
+            <Pressable className="flex-row items-center gap-2 mt-4" onPress={() => setIsExcess((v) => !v)}>
               <View
                 className={
                   isExcess
@@ -325,15 +332,9 @@ export function EmbarquePalletScanScreen({ navigation }: any) {
       <View className="px-6">
         <View className="flex-row border-b border-line pb-2 mb-1">
           <Text className="w-10 text-steel text-[10px] tracking-wide uppercase">Hilera</Text>
-          <Text className="flex-1 text-steel text-[10px] tracking-wide uppercase text-center">
-            Izq.
-          </Text>
-          <Text className="flex-1 text-steel text-[10px] tracking-wide uppercase text-center">
-            Centro
-          </Text>
-          <Text className="flex-1 text-steel text-[10px] tracking-wide uppercase text-center">
-            Der.
-          </Text>
+          <Text className="flex-1 text-steel text-[10px] tracking-wide uppercase text-center">Izq.</Text>
+          <Text className="flex-1 text-steel text-[10px] tracking-wide uppercase text-center">Centro</Text>
+          <Text className="flex-1 text-steel text-[10px] tracking-wide uppercase text-center">Der.</Text>
         </View>
 
         {groupedRows.length === 0 ? (
@@ -351,11 +352,7 @@ export function EmbarquePalletScanScreen({ navigation }: any) {
                     onPress={() => entry && handlePalletScanned(entry.noPallet)}
                   >
                     {entry ? (
-                      <View
-                        className={
-                          entry.isExcess ? 'bg-rust rounded px-2 py-1' : 'bg-ink rounded px-2 py-1'
-                        }
-                      >
+                      <View className={entry.isExcess ? 'bg-rust rounded px-2 py-1' : 'bg-ink rounded px-2 py-1'}>
                         <Text className="text-pulp font-mono text-[10px]" numberOfLines={1}>
                           ...{entry.noPallet.slice(-6)}
                         </Text>

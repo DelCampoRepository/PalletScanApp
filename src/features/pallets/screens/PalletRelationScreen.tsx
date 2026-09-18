@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, Alert } from 'react-native';
 import IconBarcode from '@tabler/icons-react-native/IconBarcode';
 import IconTag from '@tabler/icons-react-native/IconTag';
@@ -7,26 +7,53 @@ import IconTrash from '@tabler/icons-react-native/IconTrash';
 import IconDeviceFloppy from '@tabler/icons-react-native/IconDeviceFloppy';
 import IconCheck from '@tabler/icons-react-native/IconCheck';
 import { palletRepository } from '@/shared/services/repositoryFactory';
-import { BoxLabel, LabelType, PalletInfo } from '@/features/pallets/domain/types';
+import { LabelType } from '@/features/pallets/domain/types';
+import { usePalletRelationStore } from '@/features/pallets/store/usePalletRelationStore';
 import { useScannerInput } from '@/features/scanning/hooks/useScannerInput';
-import { useRef } from 'react';
+
 const MIN_LABEL_LENGTH = 16;
 const MAX_LABEL_LENGTH = 18;
 
 export function PalletRelationScreen() {
-    const labelInputRef = useRef<TextInput>(null);
-  const [palletCode, setPalletCode] = useState<string | null>(null);
-  const [palletInfo, setPalletInfo] = useState<PalletInfo | null>(null);
+  const palletCode = usePalletRelationStore((s) => s.palletCode);
+  const palletInfo = usePalletRelationStore((s) => s.palletInfo);
+  const scannedLabels = usePalletRelationStore((s) => s.scannedLabels);
+  const hasHydrated = usePalletRelationStore((s) => s.hasHydrated);
+  const setPallet = usePalletRelationStore((s) => s.setPallet);
+  const addLabel = usePalletRelationStore((s) => s.addLabel);
+  const removeLabelFromStore = usePalletRelationStore((s) => s.removeLabel);
+  const clearLabels = usePalletRelationStore((s) => s.clearLabels);
+  const resetAllStore = usePalletRelationStore((s) => s.resetAll);
+
   const [palletError, setPalletError] = useState<string | null>(null);
-  const [scannedLabels, setScannedLabels] = useState<BoxLabel[]>([]);
   const [labelError, setLabelError] = useState<string | null>(null);
   const [relating, setRelating] = useState(false);
+  const [recoveryChecked, setRecoveryChecked] = useState(false);
+
+  const labelInputRef = useRef<TextInput>(null);
+
+  // Aviso de recuperación: si al abrir la pantalla ya hay un pallet con
+  // etiquetas guardadas de una sesión anterior (la app se cerró antes de
+  // relacionar), se le pregunta al operador si quiere continuar o
+  // descartarlo — nunca se recupera en silencio.
+  useEffect(() => {
+    if (!hasHydrated || recoveryChecked) return;
+    setRecoveryChecked(true);
+    if (palletCode && scannedLabels.length > 0) {
+      Alert.alert(
+        'Trabajo pendiente encontrado',
+        `Pallet ${palletCode} con ${scannedLabels.length} etiqueta(s) sin guardar. ¿Desea continuar con este trabajo?`,
+        [
+          { text: 'Descartar', style: 'destructive', onPress: () => resetAllStore() },
+          { text: 'Continuar', style: 'default' },
+        ],
+      );
+    }
+  }, [hasHydrated, recoveryChecked, palletCode, scannedLabels.length, resetAllStore]);
 
   function resetAll() {
-    setPalletCode(null);
-    setPalletInfo(null);
+    resetAllStore();
     setPalletError(null);
-    setScannedLabels([]);
     setLabelError(null);
     palletScanner.clear();
     labelScanner.clear();
@@ -49,9 +76,7 @@ export function PalletRelationScreen() {
       return;
     }
     if (info.requiresConsolidatorPallet) {
-      setPalletError(
-        `Lea la etiqueta del pallet consolidador: ${info.requiresConsolidatorPallet}`,
-      );
+      setPalletError(`Lea la etiqueta del pallet consolidador: ${info.requiresConsolidatorPallet}`);
       palletScanner.clear();
       return;
     }
@@ -62,9 +87,7 @@ export function PalletRelationScreen() {
     }
 
     const existing = await palletRepository.getExistingLabels(code);
-    setPalletCode(code);
-    setPalletInfo(info);
-    setScannedLabels(existing);
+    setPallet(code, info, existing);
     labelInputRef.current?.focus();
   }
 
@@ -102,7 +125,7 @@ export function PalletRelationScreen() {
       return;
     }
 
-    setScannedLabels((prev) => [...prev, { code, type, alreadyOnPallet: false }]);
+    addLabel({ code, type, alreadyOnPallet: false });
     labelScanner.clear();
   }
 
@@ -118,14 +141,14 @@ export function PalletRelationScreen() {
   });
 
   function handleRemoveLabel(code: string) {
-    setScannedLabels((prev) => prev.filter((l) => l.code !== code));
+    removeLabelFromStore(code);
   }
 
   function handleLimpiar() {
     if (scannedLabels.length === 0) return;
     Alert.alert('¿Desea vaciar la lista?', '', [
       { text: 'No', style: 'cancel' },
-      { text: 'Sí', onPress: () => setScannedLabels([]) },
+      { text: 'Sí', onPress: () => clearLabels() },
     ]);
   }
 
@@ -142,10 +165,7 @@ export function PalletRelationScreen() {
     setRelating(false);
 
     if (result.ok) {
-      Alert.alert(
-        'Relación finalizada',
-        `${scannedLabels.length} de ${palletInfo?.totalBoxes ?? 0} bultos`,
-      );
+      Alert.alert('Relación finalizada', `${scannedLabels.length} de ${palletInfo?.totalBoxes ?? 0} bultos`);
       resetAll();
     }
   }
@@ -156,20 +176,14 @@ export function PalletRelationScreen() {
       return;
     }
     if (scannedLabels.length === 0) {
-      Alert.alert(
-        'Lista vacía, lea el código de barras de las etiquetas pegadas en las cajas del pallet',
-      );
+      Alert.alert('Lista vacía, lea el código de barras de las etiquetas pegadas en las cajas del pallet');
       return;
     }
     if (scannedLabels.length < palletInfo.totalBoxes) {
-      Alert.alert(
-        'No se han leído todas las etiquetas para este pallet',
-        '¿Desea continuar?',
-        [
-          { text: 'No', style: 'cancel' },
-          { text: 'Sí', onPress: doRelate },
-        ],
-      );
+      Alert.alert('No se han leído todas las etiquetas para este pallet', '¿Desea continuar?', [
+        { text: 'No', style: 'cancel' },
+        { text: 'Sí', onPress: doRelate },
+      ]);
       return;
     }
     doRelate();
@@ -180,9 +194,7 @@ export function PalletRelationScreen() {
   return (
     <ScrollView className="flex-1 bg-paper" contentContainerStyle={{ paddingBottom: 32 }}>
       <View className="bg-ink px-5 py-4 mb-5">
-        <Text className="text-steel text-[11px] tracking-widest uppercase font-mono">
-          Validación
-        </Text>
+        <Text className="text-steel text-[11px] tracking-widest uppercase font-mono">Validación</Text>
         <Text className="text-paper text-lg font-medium mt-1">Relación de pallets</Text>
       </View>
 
@@ -214,10 +226,7 @@ export function PalletRelationScreen() {
             <Text className="text-steel text-sm mb-2">GTIN {palletInfo.gtin}</Text>
 
             <View className="h-2 bg-line rounded overflow-hidden">
-              <View
-                className="h-2 bg-pulp"
-                style={{ width: `${progress * 100}%` }}
-              />
+              <View className="h-2 bg-pulp" style={{ width: `${progress * 100}%` }} />
             </View>
             <Text className="text-steel text-xs font-mono mt-1">
               {scannedLabels.length} / {palletInfo.totalBoxes} bultos
@@ -229,12 +238,10 @@ export function PalletRelationScreen() {
           <View className="mt-5">
             <View className="flex-row items-center gap-1.5 mb-1.5">
               <IconTag size={14} color="#6E7C74" />
-              <Text className="text-steel text-[11px] tracking-wide uppercase">
-                Etiqueta de caja
-              </Text>
+              <Text className="text-steel text-[11px] tracking-wide uppercase">Etiqueta de caja</Text>
             </View>
             <TextInput
-            ref={labelInputRef}
+              ref={labelInputRef}
               className="bg-white border border-line rounded p-3 font-mono text-ink tracking-widest text-center"
               value={labelScanner.value}
               onChangeText={labelScanner.handleChangeText}
@@ -248,10 +255,7 @@ export function PalletRelationScreen() {
         {scannedLabels.length > 0 && (
           <View className="mt-5">
             {scannedLabels.map((label) => (
-              <View
-                key={label.code}
-                className="flex-row items-center justify-between border-b border-line py-2.5"
-              >
+              <View key={label.code} className="flex-row items-center justify-between border-b border-line py-2.5">
                 <View className="flex-row items-center gap-2 flex-1">
                   {label.alreadyOnPallet && <IconCheck size={14} color="#6E7C74" />}
                   <Text className="font-mono text-ink text-xs" numberOfLines={1}>
