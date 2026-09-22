@@ -10,7 +10,7 @@ import { StatusBar, StyleSheet, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from '@/navigation/RootNavigator';
-
+import { NetworkErrorModal } from '@/shared/components/NetworkErrorModal';
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
@@ -19,6 +19,7 @@ function App() {
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <RootNavigator />
+        <NetworkErrorModal />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

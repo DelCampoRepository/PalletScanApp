@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import * as Keychain from 'react-native-keychain';
 import { StoredSession, AuthStatus, AuthUser, UserRole } from '../domain/types';
 import { apiClient, ApiError } from '@/shared/services/apiClient';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLocationStore } from '@/shared/store/useLocationStore';
 const SERVICE = 'pallet-scan-session';
 
 interface LoginApiResponse {
@@ -87,7 +88,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
       set({ status: 'authenticated', user });
     } catch (err) {
-      set({ error: (err as ApiError).message ?? 'No se pudo iniciar sesión' });
+       const apiError = err as ApiError;
+         if (apiError.status !== 0) {
+           set({ error: apiError.message ?? 'No se pudo iniciar sesión' });
+       }
     }
   },
 
@@ -95,6 +99,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
   logout: async () => {
     await clearSession();
+    useLocationStore.getState().clearLocation();
+    await AsyncStorage.removeItem('location-storage');
     set({ status: 'unauthenticated', user: null });
   },
 

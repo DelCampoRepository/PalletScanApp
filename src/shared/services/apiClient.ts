@@ -1,5 +1,6 @@
 import * as Keychain from 'react-native-keychain';
-
+import { useLocationStore } from '@/shared/store/useLocationStore';
+import { useNetworkErrorStore } from '@/shared/store/useNetworkErrorStore';
 
 const SERVICE = 'pallet-scan-session';
 
@@ -31,20 +32,25 @@ async function request<T>(
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const baseUrl = useLocationStore.getState().selected?.apiBaseUrl;
+  if (!baseUrl) {
+    // Caso defensivo: no debería pasar, ya que RootNavigator obliga a
+    // elegir ubicación antes de llegar aquí. No dispara el modal de red,
+    // porque no es un problema de conexión.
+    throw { message: 'No se ha seleccionado una ubicación', status: -1 } as ApiError;
+  }
+
   let response: Response;
   try {
-    const { useLocationStore } = require('@/shared/store/useLocationStore');
-    const baseUrl = useLocationStore.getState().selected?.apiBaseUrl;
-    if (!baseUrl) {
-    throw { message: 'No se ha seleccionado una ubicación', status: 0 } as ApiError;
-    }
-response = await fetch(`${baseUrl}${path}`, {
+    response = await fetch(`${baseUrl}${path}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw { message: 'No se pudo conectar con el servidor. Revisa tu conexión.', status: 0 } as ApiError;
+    const message = 'No se pudo conectar con el servidor. Revisa tu conexión a internet.';
+    useNetworkErrorStore.getState().show(message);
+    throw { message, status: 0 } as ApiError;
   }
 
   let data: any = null;
