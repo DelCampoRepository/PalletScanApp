@@ -24,12 +24,17 @@ export class CatalogApiRepository implements ICatalogRepository {
     return normalize(raw);
   }
 
-  async getDrivers(transportLineCode: string): Promise<CatalogItem[]> {
-    const raw = await apiClient.get<RawCatalogItem[]>(
-      `/api/catalogs/drivers?transportLineCode=${encodeURIComponent(transportLineCode)}`,
-    );
-    return normalize(raw);
-  }
+  
+ async getDrivers(transportLineCode: string): Promise<CatalogItem[]> {
+  const raw = await apiClient.get<Array<{ codigo: string; descripcion: string; vigencia_Licencia?: string }>>(
+    `/api/catalogs/drivers?transportLineCode=${encodeURIComponent(transportLineCode)}`,
+  );
+  return raw.map((item) => ({
+    code: item.codigo.trim(),
+    description: item.descripcion.trim(),
+    licenseExpiration: item.vigencia_Licencia,
+  }));
+}
 
   async getTractors(transportLineCode: string): Promise<CatalogItem[]> {
     const raw = await apiClient.get<RawCatalogItem[]>(

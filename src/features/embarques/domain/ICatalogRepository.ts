@@ -1,6 +1,7 @@
 export interface CatalogItem {
   code: string;
   description: string;
+  licenseExpiration?: string;
 }
 
 export interface ICatalogRepository {

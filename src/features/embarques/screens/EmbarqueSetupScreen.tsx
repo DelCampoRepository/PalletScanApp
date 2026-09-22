@@ -334,13 +334,17 @@ function handleEmbarcar() {
         </View>
       </View>
 
-      <CatalogPickerModal
+         <CatalogPickerModal
         visible={picker.visible}
         title={picker.title}
         items={picker.items}
         loading={picker.loading}
         onSelect={picker.handleSelect}
         onClose={picker.close}
+        isItemDisabled={(item) =>
+          !!item.licenseExpiration && new Date(item.licenseExpiration) < new Date()
+        }
+        disabledReason="Licencia vencida"
       />
     </ScrollView>
   );

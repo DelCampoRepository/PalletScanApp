@@ -13,9 +13,11 @@ export const palletRepository: IPalletRepository = new PalletMockRepository();
 
 
 import { IEmbarquePalletRepository } from '@/features/embarques/domain/IEmbarquePalletRepository';
-import { EmbarquePalletMockRepository } from '@/features/embarques/data/EmbarquePalletMockRepository';
+
+//import { EmbarquePalletMockRepository } from '@/features/embarques/data/EmbarquePalletMockRepository';
+import { EmbarquePalletApiRepository } from '@/features/embarques/data/EmbarquePalletApiRepository';
 
 
-export const embarquePalletRepository: IEmbarquePalletRepository = new EmbarquePalletMockRepository();
-
+//export const embarquePalletRepository: IEmbarquePalletRepository = new EmbarquePalletMockRepository();
+export const embarquePalletRepository: IEmbarquePalletRepository = new EmbarquePalletApiRepository();
 export const catalogRepository: ICatalogRepository = new CatalogApiRepository();
