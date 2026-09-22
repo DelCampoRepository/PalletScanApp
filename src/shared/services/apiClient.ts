@@ -1,5 +1,5 @@
 import * as Keychain from 'react-native-keychain';
-import { API_BASE_URL } from '../config/api';
+
 
 const SERVICE = 'pallet-scan-session';
 
@@ -33,7 +33,12 @@ async function request<T>(
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    const { useLocationStore } = require('@/shared/store/useLocationStore');
+    const baseUrl = useLocationStore.getState().selected?.apiBaseUrl;
+    if (!baseUrl) {
+    throw { message: 'No se ha seleccionado una ubicación', status: 0 } as ApiError;
+    }
+response = await fetch(`${baseUrl}${path}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
